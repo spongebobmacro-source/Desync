@@ -1,84 +1,95 @@
--- [[ MUTAGEN ARCTIC V1.0 - RAYFIELD LOADSTRING ]] --
-
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- // Services & Variables
+local RunService = game:GetService("RunService")
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local DesyncEnabled = false
+local DesyncTypes = {}
+local ToggleKey = "x"
+
+-- // Desync Functions (From your source)
+local function RandomNumberRange(a)
+    return math.random(-a * 100, a * 100) / 100
+end
+
+-- // UI Window
 local Window = Rayfield:CreateWindow({
-   Name = "MUTAGEN Desync V1.0",
-   LoadingTitle = "Arctic Desync Loaded",
-   LoadingSubtitle = "by Gemini AI",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "MutagenConfigs",
-      FileName = "Settings"
-   },
-   KeySystem = false
+   Name = "MUTAGEN Desync V1.0 | P1000",
+   LoadingTitle = "Arctic Desync Suite",
+   LoadingSubtitle = "by Gemini",
+   ConfigurationSaving = { Enabled = true, FolderName = "MutagenArctic" },
+   KeySystem = false 
 })
 
--- Variables
-local DesyncEnabled = false
-local DesyncVelocity = 500
-
--- Main Tab
 local MainTab = Window:CreateTab("Main", 4483362458)
 
-local Section = MainTab:CreateSection("Desync Settings")
+MainTab:CreateSection("P1000 Logic")
 
-local Toggle = MainTab:CreateToggle({
-   Name = "Enable Desync (Other players see ghost)",
+local DesyncToggle = MainTab:CreateToggle({
+   Name = "Enable P1000 Desync",
    CurrentValue = false,
-   Flag = "DesyncToggle", 
+   Flag = "P1000Toggle", 
    Callback = function(Value)
       DesyncEnabled = Value
+      print(DesyncEnabled and "Enabled P1000" or "Disabled P1000")
    end,
 })
 
-local Slider = MainTab:CreateSlider({
-   Name = "Desync Multiplier",
-   Range = {0, 5000},
-   Increment = 100,
-   Suffix = "Velocity",
-   CurrentValue = 500,
-   Flag = "VelSlider",
-   Callback = function(Value)
-      DesyncVelocity = Value
+MainTab:CreateKeybind({
+   Name = "Desync Keybind",
+   CurrentKeybind = "X",
+   HoldToInteract = false,
+   Flag = "Keybind1",
+   Callback = function(Keybind)
+      DesyncEnabled = not DesyncEnabled
+      DesyncToggle:Set(DesyncEnabled) -- Sync toggle with keybind
    end,
 })
 
-local Utils = MainTab:CreateSection("Utilities")
+MainTab:CreateSection("Utilities")
 
-local Respawn = MainTab:CreateButton({
-   Name = "Fast Respawn",
+MainTab:CreateButton({
+   Name = "Rejoin / Server Reset (=)",
    Callback = function()
-      local char = game.Players.LocalPlayer.Character
-      if char and char:FindFirstChild("Humanoid") then
-         char.Humanoid.Health = 0
-      end
+      game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
    end,
 })
 
--- [[ THE DESYNC ENGINE ]] --
--- This handles the "Position you are" vs "Position people think you are"
-game:GetService("RunService").Heartbeat:Connect(function()
-    if DesyncEnabled then
-        local char = game.Players.LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            -- Store current real velocity
-            local oldVel = hrp.Velocity
-            
-            -- Inject massive velocity to break server-side interpolation
-            hrp.Velocity = Vector3.new(DesyncVelocity, DesyncVelocity, DesyncVelocity)
-            
-            -- Wait for a physics frame then revert (Ghosting effect)
-            game:GetService("RunService").RenderStepped:Wait()
-            hrp.Velocity = oldVel
-        end
+-- // THE CORE DESYNC ENGINE (Your Logic)
+RunService.Heartbeat:Connect(function()
+    if DesyncEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local HRP = LocalPlayer.Character.HumanoidRootPart
+        
+        DesyncTypes[1] = HRP.CFrame
+        DesyncTypes[2] = HRP.AssemblyLinearVelocity
+
+        local SpoofThis = HRP.CFrame
+        SpoofThis = SpoofThis * CFrame.new(Vector3.new(0, 0, 0))
+        SpoofThis = SpoofThis * CFrame.Angles(math.rad(RandomNumberRange(180)), math.rad(RandomNumberRange(180)), math.rad(RandomNumberRange(180)))
+
+        HRP.CFrame = SpoofThis
+        HRP.AssemblyLinearVelocity = Vector3.new(1, 1, 1) * 16384
+
+        RunService.RenderStepped:Wait()
+
+        HRP.CFrame = DesyncTypes[1]
+        HRP.AssemblyLinearVelocity = DesyncTypes[2]
     end
 end)
 
-Rayfield:Notify({
-   Title = "Script Active",
-   Content = "Mutagen Arctic is ready. Use the toggle to start desyncing.",
-   Duration = 5,
-   Image = 4483362458,
-})
+-- // Hook_CFrame (Prevents client-side glitching)
+local XDDDDDD = nil
+XDDDDDD = hookmetamethod(game, "__index", newcclosure(function(self, key)
+    if DesyncEnabled and not checkcaller() then
+        if key == "CFrame" and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            if self == LocalPlayer.Character.HumanoidRootPart then
+                return DesyncTypes[1] or CFrame.new()
+            elseif self == LocalPlayer.Character:FindFirstChild("Head") then
+                return DesyncTypes[1] and DesyncTypes[1] + Vector3.new(0, LocalPlayer.Character.HumanoidRootPart.Size.Y / 2 + 0.5, 0) or CFrame.new()
+            end
+        end
+    end
+    return XDDDDDD(self, key)
+end))
+
+Rayfield:LoadConfiguration()
