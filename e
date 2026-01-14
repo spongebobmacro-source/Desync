@@ -1,81 +1,72 @@
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Variables
+-- // Variables
 local DesyncActive = false
 local AnimlessActive = false
 local DesyncTypes = {}
 
--- [[ THE GHOST (55% Transparent, Green, 5x5x5, No Collide) ]] --
+-- // Ghost Part (5x5x5, 55% Transparent, Green)
 local Ghost = Instance.new("Part")
 Ghost.Name = "DesyncGhost"
 Ghost.Size = Vector3.new(5, 5, 5)
-Ghost.Color = Color3.fromRGB(0, 255, 127) -- Arctic Green
+Ghost.Color = Color3.fromRGB(0, 255, 127)
 Ghost.Transparency = 0.55
 Ghost.CanCollide = false
 Ghost.Anchored = true
 Ghost.Material = Enum.Material.ForceField
 
--- [[ UI WINDOW ]] --
-local Window = OrionLib:MakeWindow({
-    Name = "MUTAGEN ARCTIC V1.0", 
-    HidePremium = false, 
-    SaveConfig = true, 
-    ConfigFolder = "MutagenArctic",
-    IntroEnabled = true,
-    IntroText = "Mutagen Arctic Loading..."
+-- // UI Window
+local Window = Rayfield:CreateWindow({
+   Name = "MUTAGEN ARCTIC V1.0",
+   LoadingTitle = "Mutagen Hub",
+   LoadingSubtitle = "by Gemini",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "MutagenArctic",
+      FileName = "Config"
+   },
+   KeySystem = false
 })
 
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://4483362458",
-    PremiumOnly = false
+local MainTab = Window:CreateTab("Main", 4483362458)
+
+MainTab:CreateSection("P1000 Logic")
+
+-- // Desync Toggle
+MainTab:CreateToggle({
+   Name = "Enable Desync",
+   CurrentValue = false,
+   Flag = "DesyncToggle", 
+   Callback = function(Value)
+      DesyncActive = Value
+      if Value then
+         Ghost.Parent = workspace
+      else
+         Ghost.Parent = nil
+      end
+   end,
 })
 
-MainTab:AddSection({
-    Name = "Desync & Hitbox"
+-- // Animless Toggle
+MainTab:CreateToggle({
+   Name = "Animless (Freeze)",
+   CurrentValue = false,
+   Flag = "AnimlessToggle", 
+   Callback = function(Value)
+      AnimlessActive = Value
+   end,
 })
 
--- [[ DESYNC TOGGLE ]] --
-MainTab:AddToggle({
-    Name = "Enable P1000 Desync",
-    Default = false,
-    Callback = function(Value)
-        DesyncActive = Value
-        if Value then
-            Ghost.Parent = workspace
-            OrionLib:MakeNotification({
-                Name = "Mutagen",
-                Content = "Desync Activated",
-                Image = "rbxassetid://4483362458",
-                Time = 2
-            })
-        else
-            Ghost.Parent = nil
-        end
-    end    
+MainTab:CreateSection("Utilities")
+
+MainTab:CreateButton({
+   Name = "Rejoin Server",
+   Callback = function()
+      game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer)
+   end,
 })
 
--- [[ ANIMLESS TOGGLE ]] --
-MainTab:AddToggle({
-    Name = "Animless (Freeze Animations)",
-    Default = false,
-    Callback = function(Value)
-        AnimlessActive = Value
-    end    
-})
-
-MainTab:AddSection({
-    Name = "Misc"
-})
-
-MainTab:AddButton({
-    Name = "Rejoin Server",
-    Callback = function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer)
-    end
-})
-
--- [[ CORE ENGINE LOOP ]] --
+-- // Core Desync & Animless Loop
 game:GetService("RunService").Heartbeat:Connect(function()
     local LP = game:GetService("Players").LocalPlayer
     local char = LP.Character
@@ -83,19 +74,20 @@ game:GetService("RunService").Heartbeat:Connect(function()
     local hum = char and char:FindFirstChild("Humanoid")
 
     if DesyncActive and hrp then
-        -- Desync logic from your source
+        -- Save actual pos
         DesyncTypes[1] = hrp.CFrame
         DesyncTypes[2] = hrp.AssemblyLinearVelocity
 
-        Ghost.CFrame = hrp.CFrame -- Show ghost where server thinks you are
+        -- Update Ghost position
+        Ghost.CFrame = hrp.CFrame
 
-        -- P1000 Method: Spams angles and velocity
+        -- P1000 Spoofing (Hitbox trick)
         hrp.CFrame = hrp.CFrame * CFrame.Angles(math.rad(math.random(180)), math.rad(math.random(180)), math.rad(math.random(180)))
         hrp.AssemblyLinearVelocity = Vector3.new(1, 1, 1) * 16384
 
         game:GetService("RunService").RenderStepped:Wait()
 
-        -- Snap back for your screen
+        -- Restore for local view
         hrp.CFrame = DesyncTypes[1]
         hrp.AssemblyLinearVelocity = DesyncTypes[2]
     end
@@ -107,4 +99,4 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
-OrionLib:Init()
+Rayfield:LoadConfiguration()
