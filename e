@@ -1,115 +1,101 @@
--- // FORCE LOADER
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-local RS = game:GetService("RunService")
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
--- Ensure we have a place to put the UI
-local TargetParent = LP:WaitForChild("PlayerGui")
-
--- Cleanup
-if TargetParent:FindFirstChild("MutagenV1") then
-    TargetParent.MutagenV1:Destroy()
-end
-
--- // VARIABLES
+-- Variables
 local DesyncActive = false
 local AnimlessActive = false
 local DesyncTypes = {}
 
--- // UI SETUP
-local SG = Instance.new("ScreenGui")
-SG.Name = "MutagenV1"
-SG.IgnoreGuiInset = true
-SG.Parent = TargetParent
-
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 220, 0, 150)
-Main.Position = UDim2.new(0.5, -110, 0.3, 0)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Draggable = true -- Delta Mobile Support
-Main.Parent = SG
-
-local Stroke = Instance.new("UIStroke")
-Stroke.Color = Color3.fromRGB(0, 255, 127) -- Arctic Green
-Stroke.Thickness = 2
-Stroke.Parent = Main
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "MUTAGEN ARCTIC V1"
-Title.TextColor3 = Color3.fromRGB(0, 255, 127)
-Title.BackgroundTransparency = 1
-Title.Font = Enum.Font.Code
-Title.TextSize = 18
-Title.Parent = Main
-
--- // THE GHOST (55% Transparent, Green, 5x5x5, No Collide)
+-- [[ THE GHOST (55% Transparent, Green, 5x5x5, No Collide) ]] --
 local Ghost = Instance.new("Part")
 Ghost.Name = "DesyncGhost"
 Ghost.Size = Vector3.new(5, 5, 5)
-Ghost.Color = Color3.fromRGB(0, 255, 127)
+Ghost.Color = Color3.fromRGB(0, 255, 127) -- Arctic Green
 Ghost.Transparency = 0.55
 Ghost.CanCollide = false
 Ghost.Anchored = true
 Ghost.Material = Enum.Material.ForceField
 
--- // BUTTON CREATOR (With visual check)
-local function CreateButton(name, yPos, callback)
-    local btn = Instance.new("TextButton")
-    btn.Name = name .. "Button"
-    btn.Size = UDim2.new(0.8, 0, 0, 35)
-    btn.Position = UDim2.new(0.1, 0, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    btn.Text = name .. ": OFF"
-    btn.TextColor3 = Color3.white
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 14
-    btn.Parent = Main
-    
-    local btnStroke = Instance.new("UIStroke")
-    btnStroke.Color = Color3.fromRGB(60, 60, 60)
-    btnStroke.Parent = btn
-    
-    local active = false
-    btn.MouseButton1Click:Connect(function()
-        active = not active
-        btn.Text = name .. (active and ": ON" or ": OFF")
-        btn.TextColor3 = active and Color3.fromRGB(0, 255, 127) or Color3.white
-        btnStroke.Color = active and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(60, 60, 60)
-        callback(active)
-    end)
-end
+-- [[ UI WINDOW ]] --
+local Window = OrionLib:MakeWindow({
+    Name = "MUTAGEN ARCTIC V1.0", 
+    HidePremium = false, 
+    SaveConfig = true, 
+    ConfigFolder = "MutagenArctic",
+    IntroEnabled = true,
+    IntroText = "Mutagen Arctic Loading..."
+})
 
--- // CREATE THE 2 BUTTONS
-CreateButton("DESYNC", 45, function(v) 
-    DesyncActive = v 
-    Ghost.Parent = v and workspace or nil
-end)
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483362458",
+    PremiumOnly = false
+})
 
-CreateButton("ANIMLESS", 90, function(v) 
-    AnimlessActive = v 
-end)
+MainTab:AddSection({
+    Name = "Desync & Hitbox"
+})
 
--- // CORE LOGIC LOOP
-RS.Heartbeat:Connect(function()
+-- [[ DESYNC TOGGLE ]] --
+MainTab:AddToggle({
+    Name = "Enable P1000 Desync",
+    Default = false,
+    Callback = function(Value)
+        DesyncActive = Value
+        if Value then
+            Ghost.Parent = workspace
+            OrionLib:MakeNotification({
+                Name = "Mutagen",
+                Content = "Desync Activated",
+                Image = "rbxassetid://4483362458",
+                Time = 2
+            })
+        else
+            Ghost.Parent = nil
+        end
+    end    
+})
+
+-- [[ ANIMLESS TOGGLE ]] --
+MainTab:AddToggle({
+    Name = "Animless (Freeze Animations)",
+    Default = false,
+    Callback = function(Value)
+        AnimlessActive = Value
+    end    
+})
+
+MainTab:AddSection({
+    Name = "Misc"
+})
+
+MainTab:AddButton({
+    Name = "Rejoin Server",
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer)
+    end
+})
+
+-- [[ CORE ENGINE LOOP ]] --
+game:GetService("RunService").Heartbeat:Connect(function()
+    local LP = game:GetService("Players").LocalPlayer
     local char = LP.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChild("Humanoid")
 
     if DesyncActive and hrp then
-        -- Desync logic from your P1000 source
+        -- Desync logic from your source
         DesyncTypes[1] = hrp.CFrame
         DesyncTypes[2] = hrp.AssemblyLinearVelocity
 
-        Ghost.CFrame = hrp.CFrame -- Show ghost where people think you are
+        Ghost.CFrame = hrp.CFrame -- Show ghost where server thinks you are
 
+        -- P1000 Method: Spams angles and velocity
         hrp.CFrame = hrp.CFrame * CFrame.Angles(math.rad(math.random(180)), math.rad(math.random(180)), math.rad(math.random(180)))
         hrp.AssemblyLinearVelocity = Vector3.new(1, 1, 1) * 16384
 
-        RS.RenderStepped:Wait()
+        game:GetService("RunService").RenderStepped:Wait()
 
+        -- Snap back for your screen
         hrp.CFrame = DesyncTypes[1]
         hrp.AssemblyLinearVelocity = DesyncTypes[2]
     end
@@ -120,3 +106,5 @@ RS.Heartbeat:Connect(function()
         end
     end
 end)
+
+OrionLib:Init()
