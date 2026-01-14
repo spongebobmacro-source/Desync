@@ -1,49 +1,53 @@
--- Safe Loader for Delta
-repeat task.wait() until game:IsLoaded()
+-- // FORCE LOADER
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
-repeat task.wait() until LP:FindFirstChild("PlayerGui")
+local RS = game:GetService("RunService")
 
--- Variables
+-- Ensure we have a place to put the UI
+local TargetParent = LP:WaitForChild("PlayerGui")
+
+-- Cleanup
+if TargetParent:FindFirstChild("MutagenV1") then
+    TargetParent.MutagenV1:Destroy()
+end
+
+-- // VARIABLES
 local DesyncActive = false
 local AnimlessActive = false
 local DesyncTypes = {}
 
--- Cleanup
-if LP.PlayerGui:FindFirstChild("MutagenUI") then
-    LP.PlayerGui.MutagenUI:Destroy()
-end
-
--- UI Setup
+-- // UI SETUP
 local SG = Instance.new("ScreenGui")
-SG.Name = "MutagenUI"
-SG.ResetOnSpawn = false
-SG.Parent = LP.PlayerGui
+SG.Name = "MutagenV1"
+SG.IgnoreGuiInset = true
+SG.Parent = TargetParent
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 200, 0, 150)
-Main.Position = UDim2.new(0.5, -100, 0.2, 0)
-Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Main.Size = UDim2.new(0, 220, 0, 150)
+Main.Position = UDim2.new(0.5, -110, 0.3, 0)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
 Main.Active = true
-Main.Draggable = true -- Mobile drag enabled
+Main.Draggable = true -- Delta Mobile Support
 Main.Parent = SG
 
 local Stroke = Instance.new("UIStroke")
-Stroke.Color = Color3.fromRGB(0, 255, 127)
+Stroke.Color = Color3.fromRGB(0, 255, 127) -- Arctic Green
 Stroke.Thickness = 2
 Stroke.Parent = Main
 
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "MUTAGEN ARCTIC"
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "MUTAGEN ARCTIC V1"
 Title.TextColor3 = Color3.fromRGB(0, 255, 127)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.Code
+Title.TextSize = 18
 Title.Parent = Main
 
--- Ghost Part (55% Transparent, Green, 5x5x5, No Collision)
+-- // THE GHOST (55% Transparent, Green, 5x5x5, No Collide)
 local Ghost = Instance.new("Part")
+Ghost.Name = "DesyncGhost"
 Ghost.Size = Vector3.new(5, 5, 5)
 Ghost.Color = Color3.fromRGB(0, 255, 127)
 Ghost.Transparency = 0.55
@@ -51,62 +55,61 @@ Ghost.CanCollide = false
 Ghost.Anchored = true
 Ghost.Material = Enum.Material.ForceField
 
--- Button Creator
-local function MakeBtn(text, pos, callback)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(0.8, 0, 0, 35)
-    b.Position = pos
-    b.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    b.Text = text .. ": OFF"
-    b.TextColor3 = Color3.white
-    b.Font = Enum.Font.SourceSansBold
-    b.Parent = Main
+-- // BUTTON CREATOR (With visual check)
+local function CreateButton(name, yPos, callback)
+    local btn = Instance.new("TextButton")
+    btn.Name = name .. "Button"
+    btn.Size = UDim2.new(0.8, 0, 0, 35)
+    btn.Position = UDim2.new(0.1, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.Text = name .. ": OFF"
+    btn.TextColor3 = Color3.white
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 14
+    btn.Parent = Main
     
-    local s = Instance.new("UIStroke")
-    s.Color = Color3.fromRGB(50, 50, 50)
-    s.Parent = b
+    local btnStroke = Instance.new("UIStroke")
+    btnStroke.Color = Color3.fromRGB(60, 60, 60)
+    btnStroke.Parent = btn
     
-    local state = false
-    b.MouseButton1Click:Connect(function()
-        state = not state
-        b.Text = text .. (state and ": ON" or ": OFF")
-        b.TextColor3 = state and Color3.fromRGB(0, 255, 127) or Color3.white
-        s.Color = state and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(50, 50, 50)
-        callback(state)
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        btn.Text = name .. (active and ": ON" or ": OFF")
+        btn.TextColor3 = active and Color3.fromRGB(0, 255, 127) or Color3.white
+        btnStroke.Color = active and Color3.fromRGB(0, 255, 127) or Color3.fromRGB(60, 60, 60)
+        callback(active)
     end)
 end
 
--- Create The 2 Buttons
-MakeBtn("DESYNC", UDim2.new(0.1, 0, 0.3, 0), function(v) 
+-- // CREATE THE 2 BUTTONS
+CreateButton("DESYNC", 45, function(v) 
     DesyncActive = v 
     Ghost.Parent = v and workspace or nil
 end)
 
-MakeBtn("ANIMLESS", UDim2.new(0.1, 0, 0.65, 0), function(v) 
+CreateButton("ANIMLESS", 90, function(v) 
     AnimlessActive = v 
 end)
 
--- Main Logic Loop
-game:GetService("RunService").Heartbeat:Connect(function()
+-- // CORE LOGIC LOOP
+RS.Heartbeat:Connect(function()
     local char = LP.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChild("Humanoid")
 
     if DesyncActive and hrp then
-        -- Save original state
+        -- Desync logic from your P1000 source
         DesyncTypes[1] = hrp.CFrame
         DesyncTypes[2] = hrp.AssemblyLinearVelocity
 
-        -- Ghost Visualization
-        Ghost.CFrame = hrp.CFrame
+        Ghost.CFrame = hrp.CFrame -- Show ghost where people think you are
 
-        -- P1000 Spoofing
         hrp.CFrame = hrp.CFrame * CFrame.Angles(math.rad(math.random(180)), math.rad(math.random(180)), math.rad(math.random(180)))
         hrp.AssemblyLinearVelocity = Vector3.new(1, 1, 1) * 16384
 
-        game:GetService("RunService").RenderStepped:Wait()
+        RS.RenderStepped:Wait()
 
-        -- Revert for Client view
         hrp.CFrame = DesyncTypes[1]
         hrp.AssemblyLinearVelocity = DesyncTypes[2]
     end
